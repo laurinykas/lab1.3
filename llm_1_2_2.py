@@ -20,16 +20,21 @@ def clean_response(response_text):
     """Sanitize AI response to extract numerical data.
     Removes all non-numeric characters except decimals and commas.
     This handles potential extra text/formatting from the AI response."""
+    # Must have at 2 white lines after function definition
+    
     allowed_chars = {'.', ','}
     cleaned_text = ""
-    for c in response_text:
-        if c.isdigit() or c in allowed_chars:  # Keep only valid number characters
-            cleaned_text += c
+    for char in response_text:
+        if char.isdigit() or char in allowed_chars:  # Keep only valid number characters
+            cleaned_text += char #c renamed to char for better readability
     return cleaned_text
 
+#It has to be two white lines between functions
 def parse_numbers(cleaned_text):
     """Convert sanitized string to list of floats.
     Splits comma-separated values and handles empty strings."""
+    #Must have at least 2 white ines after function definition
+    
     numbers = []
     for num in cleaned_text.split(','):
         if num:  # Skip empty strings from potential double commas
