@@ -7,61 +7,104 @@ Original file is located at
     https://colab.research.google.com/drive/1ZSkfpphGeXOh6UZJrEqY3l78zBqm2c90
 """
 
-# Import required libraries
-import google.generativeai as genai  # For accessing Gemini AI
-import matplotlib.pyplot as plt      # For data visualization
-import numpy as np                   # Numerical operations (not directly used here)
-from google.colab import userdata    # For secure API key access in Colab
+import google.generativeai as genai
+import matplotlib.pyplot as plt
+from google.colab import userdata
 
-# Configure Gemini AI with API key from Colab's secret storage
-genai.configure(api_key=userdata.get('GOOGLE_API_KEY'))
-
-def clean_response(response_text):
-    """Sanitize AI response to extract numerical data.
-    Removes all non-numeric characters except decimals and commas.
-    This handles potential extra text/formatting from the AI response."""
-    # Must have at 2 white lines after function definition
-    
-    allowed_chars = {'.', ','}
-    cleaned_text = ""
-    for char in response_text:
-        if char.isdigit() or char in allowed_chars:  # Keep only valid number characters
-            cleaned_text += char #c renamed to char for better readability
-    return cleaned_text
-
-#It has to be two white lines between functions
-def parse_numbers(cleaned_text):
-    """Convert sanitized string to list of floats.
-    Splits comma-separated values and handles empty strings."""
-    #Must have at least 2 white ines after function definition
-    
-    numbers = []
-    for num in cleaned_text.split(','):
-        if num:  # Skip empty strings from potential double commas
-            numbers.append(float(num))
-    return numbers
-
-# AI prompt configuration
-prompt = """Generate 1000 random numbers uniformly distributed between 0 and 1. 
+# Constants
+EXPECTED_NUMBERS = 1000
+PROMPT = """Generate 1000 random numbers uniformly distributed between 0 and 1. 
 Return them as a single line of numbers separated by commas, without writing any code, give full 1000."""
 
-# Initialize model and generate response
-model = genai.GenerativeModel("gemini-2.0-flash")  # Use Flash model for fast response
-response = model.generate_content(prompt)
 
-# Data processing pipeline
-cleaned_text = clean_response(response.text)       # Sanitize raw AI response
-random_numbers = parse_numbers(cleaned_text)       # Convert to numerical list
+def configure_gemini() -> None:
+    """Configure Gemini AI with API key from secure storage."""
+    genai.configure(api_key=userdata.get('GOOGLE_API_KEY'))
 
-# Quality control check
-if len(random_numbers) < 1000:
-    raise ValueError(f"API returned only {len(random_numbers)} numbers. Expected 1000.")
-random_numbers = random_numbers[:1000]  # Ensure exactly 1000 numbers (truncate if over)
 
-# Visualization using matplotlib
-plt.hist(random_numbers, bins=100, edgecolor='black', alpha=0.8)
-plt.title("Uniform Distribution of 1000 Random Numbers\n(Gemini AI Generated)")
-plt.xlabel("Value")
-plt.ylabel("Frequency")
-plt.grid(True)
-plt.show()  # Display the plot (implicit in Colab, explicit in other environments)
+def clean_response(response_text: str) -> str:
+    """Sanitize AI response to extract numerical data.
+    
+    Args:
+        response_text: Raw text response from AI containing numbers
+        
+    Returns:
+        String containing only digits, commas, and decimal points
+    """
+    return ''.join([
+        char for char in response_text 
+        if char.isdigit() or char in {'.', ','}
+    ])
+
+
+def parse_numbers(cleaned_text: str) -> list[float]:
+    """Convert sanitized string to list of floats.
+    
+    Args:
+        cleaned_text: String containing comma-separated numerical values
+        
+    Returns:
+        List of parsed float values
+        
+    Raises:
+        ValueError: If any value cannot be converted to float
+    """
+    numbers = []
+    for num_str in cleaned_text.split(','):
+        if not num_str:
+            continue
+        try:
+            numbers.append(float(num_str))
+        except ValueError as e:
+            raise ValueError(f"Invalid number format: {num_str}") from e
+    return numbers
+
+
+def validate_numbers(numbers: list[float]) -> list[float]:
+    """Validate and ensure exactly EXPECTED_NUMBERS values.
+    
+    Args:
+        numbers: List of generated numbers
+        
+    Returns:
+        List truncated to EXPECTED_NUMBERS
+        
+    Raises:
+        ValueError: If insufficient numbers generated
+    """
+    if len(numbers) < EXPECTED_NUMBERS:
+        raise ValueError(
+            f"API returned only {len(numbers)} numbers. Expected {EXPECTED_NUMBERS}."
+        )
+    return numbers[:EXPECTED_NUMBERS]
+
+
+def plot_distribution(numbers: list[float]) -> None:
+    """Create histogram visualization of the number distribution.
+    
+    Args:
+        numbers: List of values to plot
+    """
+    plt.hist(numbers, bins=100, edgecolor='black', alpha=0.8)
+    plt.title(f"Uniform Distribution of {EXPECTED_NUMBERS} Random Numbers\n(Gemini AI Generated)")
+    plt.xlabel("Value")
+    plt.ylabel("Frequency")
+    plt.grid(True)
+    plt.show()
+
+
+def main() -> None:
+    """Main execution flow."""
+    configure_gemini()
+    
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    response = model.generate_content(PROMPT)
+    
+    processed_numbers = validate_numbers(
+        parse_numbers(clean_response(response.text))
+    
+    plot_distribution(processed_numbers)
+
+
+if __name__ == "__main__":
+    main()
